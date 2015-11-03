@@ -1,6 +1,8 @@
 
 package com.github.kudo.rxrnbridge.sample;
 
+import android.annotation.SuppressLint;
+
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
@@ -73,6 +75,7 @@ public class RNSampleModule extends ReactContextBaseJavaModule {
                 });
     }
 
+    @SuppressLint("DefaultLocale")
     @ReactMethodObservable
     public Observable<String> foo() {
         final int timerSeconds = 3;

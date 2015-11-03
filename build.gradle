@@ -1,7 +1,6 @@
 subprojects { project ->
     group = GROUP
     version = VERSION_NAME
-    println project
 
     repositories {
         mavenLocal()
