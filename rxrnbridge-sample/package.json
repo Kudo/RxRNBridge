@@ -1,0 +1,11 @@
+{
+  "name": "rxrnbridge-sample",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node_modules/react-native/packager/packager.sh"
+  },
+  "dependencies": {
+    "react-native": "^0.13.2"
+  }
+}

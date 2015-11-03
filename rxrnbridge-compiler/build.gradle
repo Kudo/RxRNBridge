@@ -1,0 +1,9 @@
+apply plugin: 'java'
+
+dependencies {
+    compile project(':rxrnbridge-annotations')
+    compile deps.autoservice
+    compile deps.autocommon
+    compile deps.javapoet
+    compile deps.rxjava
+}
