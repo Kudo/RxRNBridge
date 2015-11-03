@@ -1,7 +1,5 @@
 package com.github.kudo.rxrnbridge.compiler;
 
-import com.facebook.react.bridge.Promise;
-import com.facebook.react.bridge.ReactMethod;
 import com.github.kudo.rxrnbridge.annotations.ReactMethodObservable;
 import com.google.auto.common.SuperficialValidation;
 import com.google.auto.service.AutoService;
@@ -38,9 +36,6 @@ import javax.lang.model.util.ElementFilter;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
-
-import rx.Observable;
-import rx.functions.Action1;
 
 @AutoService(Processor.class)
 public class RxRNBridgeProcessor extends AbstractProcessor {
@@ -105,31 +100,6 @@ public class RxRNBridgeProcessor extends AbstractProcessor {
         processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, message, element);
     }
 
-    private MethodSpec genRxRNBridgePromise() {
-        MethodSpec methodSpec = MethodSpec.methodBuilder("rxRNBridgePromise")
-                .addModifiers(Modifier.PRIVATE)
-                .addParameter(TypeName.get(Observable.class), "observable", Modifier.FINAL)
-                .addParameter(TypeName.get(Promise.class), "promise", Modifier.FINAL)
-                .returns(void.class)
-                .addCode(""
-                                + "observable.subscribe(\n"
-                                + "new $T<Object>() {\n"
-                                + "  @Override\n"
-                                + "  public void call(Object object) {\n"
-                                + "    promise.resolve(object);\n"
-                                + "  }\n"
-                                + "}, new $T<Throwable>() {\n"
-                                + "  @Override\n"
-                                + "  public void call(Throwable throwable) {\n"
-                                + "    promise.reject(throwable.getMessage());\n"
-                                + "  }\n"
-                                + "});\n",
-                        Action1.class,
-                        Action1.class)
-                .build();
-        return methodSpec;
-    }
-
     private void writeInjectedClass(TypeElement clsElement) {
         List<? extends Element> subElements = clsElement.getEnclosedElements();
 
@@ -166,23 +136,22 @@ public class RxRNBridgeProcessor extends AbstractProcessor {
                 paramString.append(paramElement.getSimpleName().toString());
                 if (iter.hasNext()) { paramString.append(", "); }
             }
-            params.add(ParameterSpec.builder(TypeName.get(Promise.class), "promise", Modifier.FINAL).build());
+            params.add(ParameterSpec.builder(ClassName.get("com.facebook.react.bridge", "Promise"), "promise", Modifier.FINAL).build());
 
             MethodSpec methodSpec = MethodSpec.methodBuilder(methodElement.getSimpleName().toString())
                     .addModifiers(Modifier.PUBLIC)
-                    .addAnnotation(ReactMethod.class)
+                    .addAnnotation(ClassName.get("com.facebook.react.bridge", "ReactMethod"))
                     .returns(void.class)
                     .addParameters(params)
                     .addStatement("$T observable = super.$N($N)",
                             TypeName.get(methodElement.getReturnType()),
                             methodElement.getSimpleName().toString(),
                             paramString)
-                    .addStatement("rxRNBridgePromise(observable, promise)")
+                    .addStatement("$T.rxRNBridgePromise(observable, promise)",
+                            ClassName.get("com.github.kudo.rxrnbridge.internal", "RxRNBridgeInternal"))
                     .build();
             methodSpecs.add(methodSpec);
         }
-
-        methodSpecs.add(genRxRNBridgePromise());
 
         String packageName = elementUtils.getPackageOf(clsElement).getQualifiedName().toString();
         String injectClsSimpleName = clsElement.getSimpleName() + "$$RxBridge";

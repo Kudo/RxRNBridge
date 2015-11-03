@@ -12,6 +12,7 @@ android {
 dependencies {
     compile project(':rxrnbridge-annotations')
     compile deps.reactnative
+    compile deps.rxjava
 }
 
 apply from: rootProject.file('gradle/gradle-mvn-push.gradle')
