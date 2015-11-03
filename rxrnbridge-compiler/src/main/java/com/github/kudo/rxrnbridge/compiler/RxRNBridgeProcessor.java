@@ -151,7 +151,9 @@ public class RxRNBridgeProcessor extends AbstractProcessor {
             }
 
             // [1] Append callbacks/promise as last parameter
-            params.add(ParameterSpec.builder(ClassName.get("com.facebook.react.bridge", "Promise"), "promise", Modifier.FINAL).build());
+            // params.add(ParameterSpec.builder(ClassName.get("com.facebook.react.bridge", "Promise"), "promise", Modifier.FINAL).build());
+            params.add(ParameterSpec.builder(ClassName.get("com.facebook.react.bridge", "Callback"), "errorCallback", Modifier.FINAL).build());
+            params.add(ParameterSpec.builder(ClassName.get("com.facebook.react.bridge", "Callback"), "successCallback", Modifier.FINAL).build());
 
             // [2] Compose MethodSpec
             MethodSpec methodSpec = MethodSpec.methodBuilder(methodElement.getSimpleName().toString())
@@ -163,7 +165,9 @@ public class RxRNBridgeProcessor extends AbstractProcessor {
                             TypeName.get(methodElement.getReturnType()),
                             methodElement.getSimpleName().toString(),
                             paramString)
-                    .addStatement("$T.rxRNBridgePromise(observable, promise)",
+                    // .addStatement("$T.rxRNBridgePromise(observable, promise)",
+                    //        ClassName.get("com.github.kudo.rxrnbridge.internal", "RxRNBridgeInternal"))
+                    .addStatement("$T.rxRNBridgeCallbacks(observable, errorCallback, successCallback)",
                             ClassName.get("com.github.kudo.rxrnbridge.internal", "RxRNBridgeInternal"))
                     .build();
 

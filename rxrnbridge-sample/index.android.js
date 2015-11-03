@@ -27,7 +27,6 @@ var RxRNBridgeSample = React.createClass({
       self.setState(Object.assign({}, {foo: value}));
     });
     SampleModule.listRNReleases().then(function(rnReleases) {
-      console.log('rnReleases', rnReleases)
       self.setState(Object.assign({}, {rnReleases: rnReleases}));
     });
   },
