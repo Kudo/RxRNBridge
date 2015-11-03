@@ -42,6 +42,7 @@ public class RxRNBridgeProcessor extends AbstractProcessor {
     private Elements elementUtils;
     private Types typeUtils;
     private Filer filer;
+    private static final String GEN_CLASS_SUFFIX = "$$RxBridge";
     private HashMap<String, Boolean> mDoneClassMap = new HashMap<>();
 
     @Override public synchronized void init(ProcessingEnvironment env) {
@@ -65,33 +66,32 @@ public class RxRNBridgeProcessor extends AbstractProcessor {
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment env) {
         for (Element element : env.getElementsAnnotatedWith(ReactMethodObservable.class)) {
-            if (!SuperficialValidation.validateElement(element)) continue;
-            if (element.getKind() != ElementKind.METHOD)  {
-                // FIXME: Add log
-                continue;
-            }
-
-            // [0] Check class
-            TypeElement clsElement = (TypeElement) element.getEnclosingElement();
-            if (clsElement.getKind() != ElementKind.CLASS) {
-                // FIXME: Add log
-                error(clsElement, "Parent element should be a class - %s", clsElement.getSimpleName());
-                continue;
-            }
-
-            // [n] One class process once
-            if (mDoneClassMap.containsKey(clsElement.getQualifiedName().toString())) { continue; }
-            mDoneClassMap.put(clsElement.getQualifiedName().toString(), true);
-
-            // TODO: [1] Check extends ReactContextBaseJavaModule
-
-            // [2] Write file
-
-            writeInjectedClass(clsElement);
+            TypeElement targetClsElement = getTargetClsElement(element);
+            if (targetClsElement == null) { continue; }
+            generateInjectedClass(targetClsElement);
         }
         return true;
     }
 
+    private TypeElement getTargetClsElement(Element element) {
+        if (!SuperficialValidation.validateElement(element)) {
+            return null;
+        }
+        if (element.getKind() != ElementKind.METHOD)  {
+            error(element, "Annotation only supports applying to method");
+            return null;
+        }
+        TypeElement targetClsElement = (TypeElement) element.getEnclosingElement();
+        if (targetClsElement.getKind() != ElementKind.CLASS) {
+            error(targetClsElement, "Parent element should be a class - %s", targetClsElement.getSimpleName());
+            return null;
+        }
+        if (mDoneClassMap.containsKey(targetClsElement.getQualifiedName().toString())) {
+            return null;
+        }
+        mDoneClassMap.put(targetClsElement.getQualifiedName().toString(), true);
+        return targetClsElement;
+    }
 
     private void error(Element element, String message, Object... args) {
         if (args.length > 0) {
@@ -100,16 +100,22 @@ public class RxRNBridgeProcessor extends AbstractProcessor {
         processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, message, element);
     }
 
-    private void writeInjectedClass(TypeElement clsElement) {
-        List<? extends Element> subElements = clsElement.getEnclosedElements();
+    private MethodSpec composeConstructorSpec(List<ExecutableElement> methodElements) {
+        // FIXME: Currently only support single parameter constructor with ReactApplicationContext type
+        MethodSpec constructorSpec = null;
 
-        ArrayList<MethodSpec> methodSpecs = new ArrayList<>();
-        for (ExecutableElement methodElement : ElementFilter.constructorsIn(subElements)) {
+        for (ExecutableElement methodElement : methodElements) {
+            // [0] Find target constructor
             List<? extends VariableElement> params = methodElement.getParameters();
             if (params.size() != 1) { continue; }
             VariableElement param = params.get(0);
+            TypeName typeName = TypeName.get(param.asType());
+            ClassName demendedClassName = ClassName.get("com.facebook.react.bridge", "ReactApplicationContext");
+            if (!typeName.equals(demendedClassName)) { continue; }
+
+            // [1] Construct MethodSpec
             Set<Modifier> paramModifiers = param.getModifiers();
-            ParameterSpec.Builder paramBuilder = ParameterSpec.builder(TypeName.get(param.asType()), param.getSimpleName().toString())
+            ParameterSpec.Builder paramBuilder = ParameterSpec.builder(typeName, param.getSimpleName().toString())
                     .addModifiers(paramModifiers.toArray(new Modifier[paramModifiers.size()]));
             for (AnnotationMirror annotationMirror : param.getAnnotationMirrors()) {
                 paramBuilder.addAnnotation(AnnotationSpec.get(annotationMirror));
@@ -118,11 +124,18 @@ public class RxRNBridgeProcessor extends AbstractProcessor {
                     .addParameter(paramBuilder.build())
                     .addModifiers(Modifier.PUBLIC);
             methodSpecBuilder.addStatement("super($N)", param.getSimpleName().toString());
-            methodSpecs.add(methodSpecBuilder.build());
-        }
 
-        for (ExecutableElement methodElement : ElementFilter.methodsIn(subElements)) {
+            constructorSpec = methodSpecBuilder.build();
+        }
+        return constructorSpec;
+    }
+
+    private ArrayList<MethodSpec> composeAnnotatedMethodSpec(List<ExecutableElement> methodElements) {
+        ArrayList<MethodSpec> methodSpecs = new ArrayList<>();
+        for (ExecutableElement methodElement : methodElements) {
             if (methodElement.getAnnotation(ReactMethodObservable.class) == null) { continue; }
+
+            // [0] Compose parameters
             List<ParameterSpec> params = new ArrayList<>();
             StringBuilder paramString = new StringBuilder();
             Iterator<? extends VariableElement> iter = methodElement.getParameters().iterator();
@@ -136,8 +149,11 @@ public class RxRNBridgeProcessor extends AbstractProcessor {
                 paramString.append(paramElement.getSimpleName().toString());
                 if (iter.hasNext()) { paramString.append(", "); }
             }
+
+            // [1] Append callbacks/promise as last parameter
             params.add(ParameterSpec.builder(ClassName.get("com.facebook.react.bridge", "Promise"), "promise", Modifier.FINAL).build());
 
+            // [2] Compose MethodSpec
             MethodSpec methodSpec = MethodSpec.methodBuilder(methodElement.getSimpleName().toString())
                     .addModifiers(Modifier.PUBLIC)
                     .addAnnotation(ClassName.get("com.facebook.react.bridge", "ReactMethod"))
@@ -150,17 +166,38 @@ public class RxRNBridgeProcessor extends AbstractProcessor {
                     .addStatement("$T.rxRNBridgePromise(observable, promise)",
                             ClassName.get("com.github.kudo.rxrnbridge.internal", "RxRNBridgeInternal"))
                     .build();
+
             methodSpecs.add(methodSpec);
         }
+        return methodSpecs;
+    }
 
+    private void generateInjectedClass(TypeElement clsElement) {
+        List<? extends Element> subElements = clsElement.getEnclosedElements();
+        ArrayList<MethodSpec> methodSpecs = new ArrayList<>();
+
+        // [0] Constructor
+        MethodSpec constructorSpec = composeConstructorSpec(ElementFilter.constructorsIn(subElements));
+        if (constructorSpec == null) {
+            error(clsElement, "Declared constructor not found");
+        } else {
+            methodSpecs.add(constructorSpec);
+        }
+
+        // [1] Annotated methods
+        methodSpecs.addAll(composeAnnotatedMethodSpec(ElementFilter.methodsIn(subElements)));
+
+        // [2] Package and class
         String packageName = elementUtils.getPackageOf(clsElement).getQualifiedName().toString();
-        String injectClsSimpleName = clsElement.getSimpleName() + "$$RxBridge";
+        String injectClsSimpleName = clsElement.getSimpleName() + GEN_CLASS_SUFFIX;
 
         TypeSpec injectClsSpec = TypeSpec.classBuilder(injectClsSimpleName)
                 .addModifiers(Modifier.PUBLIC)
                 .superclass(ClassName.get(clsElement))
                 .addMethods(methodSpecs)
                 .build();
+
+        // [3] Generate java file
         JavaFile javaFile = JavaFile.builder(packageName, injectClsSpec).build();
         try {
             javaFile.writeTo(filer);

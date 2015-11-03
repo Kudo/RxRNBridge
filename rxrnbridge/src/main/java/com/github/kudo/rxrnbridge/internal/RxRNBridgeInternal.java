@@ -6,6 +6,7 @@ import rx.Observable;
 import rx.functions.Action1;
 
 public class RxRNBridgeInternal {
+    @SuppressWarnings("unchecked")
     public static void rxRNBridgePromise(final Observable observable, final Promise promise) {
         observable.subscribe(
                 new Action1<Object>() {

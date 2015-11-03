@@ -11,12 +11,13 @@ import java.lang.reflect.InvocationTargetException;
 
 public class RxRNBridge {
     private static final String TAG = "RxRNBridge";
+    private static final String GEN_CLASS_SUFFIX = "$$RxBridge";
 
     @NonNull
     public static NativeModule newInstance(Class<? extends ReactContextBaseJavaModule> reactModuleClass, ReactApplicationContext reactContext)
             throws IllegalAccessException, InstantiationException, NoSuchMethodException, InvocationTargetException {
         String clsName = reactModuleClass.getName();
-        String injectClsName = clsName + "$$RxBridge";
+        String injectClsName = clsName + GEN_CLASS_SUFFIX;
         Class <? extends ReactContextBaseJavaModule> injectCls = null;
         try {
             injectCls = Class.forName(injectClsName).asSubclass(ReactContextBaseJavaModule.class);
