@@ -1,0 +1,7 @@
+rootProject.projectDir = new File('../..')
+rootProject.name = 'rxrnbridge-root'
+
+include ':rxrnbridge'
+include ':rxrnbridge-annotations'
+include ':rxrnbridge-compiler'
+include ':rxrnbridge-sample'
