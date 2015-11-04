@@ -20,6 +20,7 @@ apply plugin: 'com.neenbedankt.android-apt'
 
 repositories {
     jcenter()
+    maven { url { 'https://dl.bintray.com/kudo/maven/' } }
 }
 
 buildscript {
@@ -83,7 +84,8 @@ var SampleModule = {
 ```
 
 ## TODO
-* Add natived supported Promise after RN release [this feature](https://github.com/facebook/react-native/commit/b86a6e3b44a63e92cf3a7976d2fa26c4bf412df1)
+- [ ] Add natived supported Promise after RN release [this feature](https://github.com/facebook/react-native/commit/b86a6e3b44a63e92cf3a7976d2fa26c4bf412df1)
+- [ ] Move to jcenter once passing application
 
 ## Special thanks
 * [@ChenNevin](https://twitter.com/ChenNevin) for share me with Android development and Java annotation processing
