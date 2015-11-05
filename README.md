@@ -12,6 +12,34 @@ RxRNBridge is good for Android legacy code and leverage original RxJava ecosyste
 
 ## Usage
 
+Simply add `@ReactMethodObservable` annotation to Observable returned methods.
+
+```java
+@ReactMethodObservable
+public Observable<String> foo() { ... }
+```
+
+Now these methods will be wrapped as js functions with callback.
+(i.e. `foo(errorCallback, successCallback)`)
+You could encapsulate callback as Promise.
+
+```javascript
+var SampleModule = {
+  foo: function(): Promise {
+    return new Promise((resolve, reject) => {
+      RNSampleModule.foo(
+        (error) => {
+          reject(error);
+        }, (val) => {
+          resolve(val);
+        });
+    });
+  }
+};
+```
+
+## Installation
+
 * `build.gradle`
 
 ```gradle
@@ -37,15 +65,6 @@ apt 'com.github.kudo:rxrnbridge-compiler:0.0.1'
     
 ```
 
-* `YourNativeModule.java`
-
-You can now simply return Observable from methods and simply use `@ReactMethodObservable` annotation.
-
-```java
-@ReactMethodObservable
-public Observable<String> foo() { ... }
-```
-
 * `YourNativePackage.java`
 
 New a module instance by `RxRNBridge.newInstance(YourNativeModule.class, reactContext);`
@@ -62,25 +81,9 @@ return modules;
 
 ```
 
-* `YourModule.java`
 
-Currently NativeModule methods will append two callbacks (e.g. `foo(errorCallback, successCallback)`)
-You could encapsulate callback as Promise
-
-```javascript
-var SampleModule = {
-  foo: function(): Promise {
-    return new Promise((resolve, reject) => {
-      RNSampleModule.foo(
-        (error) => {
-          reject(error);
-        }, (val) => {
-          resolve(val);
-        });
-    });
-  }
-};
-```
+## Known issues
+1. React Native callbacks/promise could only trigger once.  Therefore, continuous event such as Observable.timer() will make problems.
 
 ## TODO
 - [ ] Add natived supported Promise after RN release [this feature](https://github.com/facebook/react-native/commit/b86a6e3b44a63e92cf3a7976d2fa26c4bf412df1)
