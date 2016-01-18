@@ -88,6 +88,7 @@ return modules;
 ## TODO
 - [ ] Add natived supported Promise after RN release [this feature](https://github.com/facebook/react-native/commit/b86a6e3b44a63e92cf3a7976d2fa26c4bf412df1)
 - [ ] Decouple RN dependency by [gradle optional](http://stackoverflow.com/questions/25345804/optional-gradle-dependencies-for-maven-libraries) or [shipping with npm](https://github.com/facebook/react-native/issues/2679) / [#3267](https://github.com/facebook/react-native/issues/3267)
+- [ ] Fix for [RN annotation package changes](https://github.com/facebook/react-native/commit/c1b7a36)
 
 ## Special thanks
 * [@ChenNevin](https://twitter.com/ChenNevin) for share me with Android development and Java annotation processing
